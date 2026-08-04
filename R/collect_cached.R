@@ -1,16 +1,17 @@
 #' Collect a dbplyr query, caching the result to a local parquet file.
 #'
 #' Runs the query the first time and writes the result to a parquet cache keyed on the query's
-#' SQL; later calls with the same query read the cache instead of re-scanning the lake. Big
-#' response pulls page in slowly, so this makes iterating on an analysis fast.
+#' SQL; later calls with the same query read the cache instead of re-scanning the lake. Big pulls
+#' page in slowly, so caching makes iterating on an analysis fast.
 #'
 #' The cache is keyed on the query only, NOT on the data — the lake rebuilds nightly, so a
-#' cache made before a rebuild is stale. Pass refresh = TRUE (or delete the cache directory)
+#' cache made before a rebuild is stale. Pass `refresh = TRUE` (or delete the cache directory)
 #' to re-pull.
 #'
-#' @param query A lazy dbplyr query (e.g. tbl(con, ...) |> filter(...)).
-#' @param refresh If TRUE, ignore any cached result and re-run the query.
-#' @param dir Cache directory; defaults to option ckdata.cache_dir or ".ckdata-cache".
+#' @param query A lazy dbplyr query — typically a [lake_tbl()] piped through dplyr verbs, e.g.
+#'   `lake_tbl("mart_responses") |> filter(...)`.
+#' @param refresh If `TRUE`, ignore any cached result and re-run the query.
+#' @param dir Cache directory; defaults to the `ckdata.cache_dir` option, or `".ckdata-cache"`.
 #' @return A tibble of results.
 #' @export
 collect_cached <- function(query, refresh = FALSE,

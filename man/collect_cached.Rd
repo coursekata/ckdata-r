@@ -11,22 +11,23 @@ collect_cached(
 )
 }
 \arguments{
-\item{query}{A lazy dbplyr query (e.g. tbl(con, ...) |> filter(...)).}
+\item{query}{A lazy dbplyr query — typically a \code{\link[=lake_tbl]{lake_tbl()}} piped through dplyr verbs, e.g.
+\code{lake_tbl("mart_responses") |> filter(...)}.}
 
-\item{refresh}{If TRUE, ignore any cached result and re-run the query.}
+\item{refresh}{If \code{TRUE}, ignore any cached result and re-run the query.}
 
-\item{dir}{Cache directory; defaults to option ckdata.cache_dir or ".ckdata-cache".}
+\item{dir}{Cache directory; defaults to the \code{ckdata.cache_dir} option, or \code{".ckdata-cache"}.}
 }
 \value{
 A tibble of results.
 }
 \description{
 Runs the query the first time and writes the result to a parquet cache keyed on the query's
-SQL; later calls with the same query read the cache instead of re-scanning the lake. Big
-response pulls page in slowly, so this makes iterating on an analysis fast.
+SQL; later calls with the same query read the cache instead of re-scanning the lake. Big pulls
+page in slowly, so caching makes iterating on an analysis fast.
 }
 \details{
 The cache is keyed on the query only, NOT on the data — the lake rebuilds nightly, so a
-cache made before a rebuild is stale. Pass refresh = TRUE (or delete the cache directory)
+cache made before a rebuild is stale. Pass \code{refresh = TRUE} (or delete the cache directory)
 to re-pull.
 }
