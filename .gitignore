@@ -1,0 +1,16 @@
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+.Renviron
+.aws/
+
+# R Markdown / knit preview outputs
+*.html
+*_files/
+
+# ckdata local query cache
+.ckdata-cache/
+
+# pkgdown site
+/docs/

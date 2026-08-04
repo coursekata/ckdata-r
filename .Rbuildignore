@@ -1,0 +1,8 @@
+^_pkgdown\.yml$
+^docs$
+^\.github$
+^\.ckdata-cache$
+^LICENSE\.md$
+^\.Rproj\.user$
+^ckdata\.Rproj$
+^\.lintr$

@@ -1,0 +1,26 @@
+Package: ckdata
+Title: Query the CourseKata Data Lake
+Version: 0.0.0.9000
+Authors@R:
+    person("Adam", "Blake", email = "adam@ablake.dev", role = c("aut", "cre"))
+Description: A thin R interface to the CourseKata analytical data lake: get lazy
+    dbplyr table references into the lake and cache large query results to disk.
+    The Amazon Athena connection is managed for you; queries are written with
+    dbplyr.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports:
+    arrow,
+    DBI,
+    dbplyr (< 2.6.0),
+    digest,
+    dplyr,
+    noctua
+Suggests:
+    RSQLite,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+URL: https://github.com/coursekata/ckdata-r
+Config/roxygen2/version: 8.0.0
