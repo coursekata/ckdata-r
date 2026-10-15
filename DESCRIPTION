@@ -10,6 +10,8 @@ Description: A thin R interface to the CourseKata analytical data lake: get lazy
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 3.5)
 Imports:
     arrow,
     DBI,
