@@ -16,7 +16,8 @@ collect_cached(
 
 \item{refresh}{If \code{TRUE}, ignore any cached result and re-run the query.}
 
-\item{dir}{Cache directory; defaults to the \code{ckdata.cache_dir} option, or \code{".ckdata-cache"}.}
+\item{dir}{Cache directory; defaults to the \code{ckdata.cache_dir} option (see \link{ckdata_options}),
+or \code{".ckdata-cache"}.}
 }
 \value{
 A tibble of results.
