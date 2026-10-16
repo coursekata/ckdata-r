@@ -11,7 +11,8 @@
 #' @param query A lazy dbplyr query — typically a [lake_tbl()] piped through dplyr verbs, e.g.
 #'   `lake_tbl("mart_responses") |> filter(...)`.
 #' @param refresh If `TRUE`, ignore any cached result and re-run the query.
-#' @param dir Cache directory; defaults to the `ckdata.cache_dir` option, or `".ckdata-cache"`.
+#' @param dir Cache directory; defaults to the `ckdata.cache_dir` option (see [ckdata_options]),
+#'   or `".ckdata-cache"`.
 #' @return A tibble of results.
 #' @export
 collect_cached <- function(query, refresh = FALSE,
@@ -19,7 +20,7 @@ collect_cached <- function(query, refresh = FALSE,
   key  <- digest::digest(as.character(dbplyr::remote_query(query)))
   path <- file.path(dir, paste0(key, ".parquet"))
   if (!refresh && file.exists(path)) {
-    message("ckdata: reading cached result from ", path)
+    if (ckdata_verbose()) message("ckdata: reading cached result from ", path)
     return(dplyr::as_tibble(arrow::read_parquet(path)))
   }
   df <- dplyr::collect(query)

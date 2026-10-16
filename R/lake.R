@@ -13,17 +13,36 @@ the <- new.env(parent = emptyenv())
 #' @return A lazy dbplyr `tbl`.
 #' @export
 lake_tbl <- function(table, schema = "ck_datalake_prd_marts_app") {
-  dplyr::tbl(lake_con(), dbplyr::in_schema(schema, table))
+  local_driver_options()
+  tbl <- dplyr::tbl(lake_con(), dbplyr::in_schema(schema, table))
+  # dbplyr keeps this class through verbs and joins, so collect() reaches collect.tbl_ckdata().
+  class(tbl) <- c("tbl_ckdata", class(tbl))
+  tbl
+}
+
+#' @exportS3Method dplyr::collect
+collect.tbl_ckdata <- function(x, ...) {
+  local_driver_options()
+  NextMethod()
+}
+
+# Set noctua the way ckdata's queries need until the calling function returns. clear_s3_resource =
+# FALSE because the read-only role can't delete its own result file (noctua's cleanup would 403),
+# so it stays set. verbose follows ckdata.verbose and is put back afterwards, so a researcher's own
+# noctua calls keep their setting. noctua has no getter, but noctua_options() returns every option,
+# so setting clear_s3_resource also reads the verbose value to restore.
+local_driver_options <- function(env = parent.frame()) {
+  old <- noctua::noctua_options(clear_s3_resource = FALSE)
+  noctua::noctua_options(verbose = ckdata_verbose())
+  withr::defer(noctua::noctua_options(verbose = old$verbose), envir = env)
 }
 
 # Return the package-managed lake connection, opening it on first use and reusing it afterwards.
 # Self-heals: a cached connection that has gone invalid (dbIsValid() is FALSE) is reopened.
 # Settings come from the environment (see the Datalake onboarding docs), so a moved bucket or a
-# dev pipeline is configuration, not a package change. clear_s3_resource = FALSE because the
-# read-only role can't delete its own result file (noctua's cleanup would 403).
+# dev pipeline is configuration, not a package change.
 lake_con <- function() {
   if (is.null(the$con) || !DBI::dbIsValid(the$con)) {
-    noctua::noctua_options(clear_s3_resource = FALSE)
     the$con <- DBI::dbConnect(
       noctua::athena(),
       s3_staging_dir = lake_env("CK_DATALAKE_S3_STAGING_DIR"),

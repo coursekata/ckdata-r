@@ -16,11 +16,12 @@ Imports:
     dbplyr (< 2.6.0),
     digest,
     dplyr,
-    noctua
+    noctua,
+    rlang,
+    withr
 Suggests:
     RSQLite,
-    testthat (>= 3.0.0),
-    withr
+    testthat (>= 3.1.7)
 Config/testthat/edition: 3
 URL: https://github.com/coursekata/ckdata-r
 Config/roxygen2/version: 8.0.0
