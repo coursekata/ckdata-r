@@ -1,5 +1,5 @@
 # Package-level state: holds the single managed DBI connection for the session.
-.ckdata_state <- new.env(parent = emptyenv())
+the <- new.env(parent = emptyenv())
 
 #' A lazy table reference into the CourseKata data lake.
 #'
@@ -18,28 +18,21 @@ lake_tbl <- function(table, schema = "ck_datalake_prd_marts_app") {
 
 # Return the package-managed lake connection, opening it on first use and reusing it afterwards.
 # Self-heals: a cached connection that has gone invalid (dbIsValid() is FALSE) is reopened.
+# Settings come from the environment (see the Datalake onboarding docs), so a moved bucket or a
+# dev pipeline is configuration, not a package change. clear_s3_resource = FALSE because the
+# read-only role can't delete its own result file (noctua's cleanup would 403).
 lake_con <- function() {
-  con <- .ckdata_state$con
-  if (is.null(con) || !DBI::dbIsValid(con)) {
-    con <- .lake_connect()
-    .ckdata_state$con <- con
+  if (is.null(the$con) || !DBI::dbIsValid(the$con)) {
+    noctua::noctua_options(clear_s3_resource = FALSE)
+    the$con <- DBI::dbConnect(
+      noctua::athena(),
+      s3_staging_dir = lake_env("CK_DATALAKE_S3_STAGING_DIR"),
+      region_name    = lake_env("CK_DATALAKE_REGION"),
+      work_group     = lake_env("CK_DATALAKE_WORKGROUP"),
+      profile_name   = lake_env("CK_DATALAKE_INTERNAL_PROFILE", required = FALSE)
+    )
   }
-  con
-}
-
-# Open a fresh Athena connection via noctua. Settings come from the environment (see the
-# Datalake onboarding docs), so a moved bucket or a dev pipeline is configuration, not a
-# package change. clear_s3_resource = FALSE because the read-only role can't delete its own
-# result file (noctua's cleanup would 403).
-.lake_connect <- function() {
-  noctua::noctua_options(clear_s3_resource = FALSE)
-  DBI::dbConnect(
-    noctua::athena(),
-    s3_staging_dir = lake_env("CK_DATALAKE_S3_STAGING_DIR"),
-    region_name    = lake_env("CK_DATALAKE_REGION"),
-    work_group     = lake_env("CK_DATALAKE_WORKGROUP"),
-    profile_name   = lake_env("CK_DATALAKE_INTERNAL_PROFILE", required = FALSE)
-  )
+  the$con
 }
 
 # A connection setting from the environment. required = TRUE settings fail with a fix-it pointer
