@@ -10,10 +10,10 @@ local_noctua_state <- function(env = parent.frame()) {
   withr::defer(noctua::noctua_options(verbose = old), envir = env)
 }
 
-# Make `con` the session's lake connection until the calling test ends, so lake_tbl() reads from it
-# instead of opening a connection to Athena.
+# Make `con` the session's lake connection, with no lake tables opened yet, until the calling test
+# ends, so lake_tbl() reads from it instead of opening a connection to Athena.
 local_lake_session <- function(con, env = parent.frame()) {
-  rlang::local_bindings(con = con, .env = the, .frame = env)
+  rlang::local_bindings(con = con, tables = the$tables[0, ], .env = the, .frame = env)
 }
 
 # A throwaway in-memory SQLite database holding `df` as table `name`, closed when the calling test
@@ -36,3 +36,30 @@ local_memory_lake_tbl <- function(df, name = "t", env = parent.frame()) {
   local_lake_session(local_memory_con(df, name, env), env)
   lake_tbl(name, schema = "main")
 }
+
+# int_classes as a lake table over an in-memory SQLite copy. Every column of an intermediate table
+# is flagged, so the edges can be tested without depending on the shipped deprecation data.
+local_classes_lake_tbl <- function(env = parent.frame()) {
+  local_memory_lake_tbl(data.frame(class_id = 1:2, is_test = FALSE), "int_classes", env = env)
+}
+
+# A plain dbplyr table over dbplyr's simulated connection: it renders SQL but never runs it, so the
+# column check, which reads only a query's SQL and columns, runs offline.
+simulated_tbl <- function(table, columns, schema = "ck_datalake_prd_marts_app") {
+  dplyr::tbl(dbplyr::simulate_dbi(), dbplyr::in_schema(schema, table), vars = columns)
+}
+
+# Registry rows for these lake tables, as lake_tbl() records them.
+registry_of <- function(...) {
+  dplyr::bind_rows(purrr::map(list(...), lake_table_columns))
+}
+
+# Real rows from the shipped column table, one per kind of replacement: a column on the same
+# table, a column on another table, another table with no single column, and none.
+deprecation_fixture <- tibble::tribble(
+  ~table,           ~column,                 ~new_table,         ~new_column,       ~removed_on,
+  "mart_responses", "branch",                "mart_enrollments", "variation_index", "2026-12-01",
+  "mart_responses", "lms_id",                NA,                 NA,                "2026-12-01",
+  "mart_responses", "lrn_question_position", "mart_questions",   NA,                "2026-12-01",
+  "mart_responses", "lrn_type",              "mart_responses",   "question_type",   "2026-12-01"
+)

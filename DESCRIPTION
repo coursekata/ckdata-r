@@ -11,15 +11,20 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Depends:
-    R (>= 3.5)
+    R (>= 4.1.0)
 Imports:
     arrow,
+    cli (>= 3.0.0),
     DBI,
+    dbplyr (>= 2.5.0),
     dbplyr (< 2.6.0),
     digest,
-    dplyr,
+    dplyr (>= 1.1.0),
     noctua,
-    rlang,
+    purrr,
+    rlang (>= 1.0.0),
+    stringr,
+    tibble,
     withr
 Suggests:
     RSQLite,

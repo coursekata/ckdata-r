@@ -3,3 +3,4 @@
 S3method(dplyr::collect,tbl_ckdata)
 export(collect_cached)
 export(lake_tbl)
+importFrom(rlang,.data)

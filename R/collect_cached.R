@@ -17,13 +17,17 @@
 #' @export
 collect_cached <- function(query, refresh = FALSE,
                            dir = getOption("ckdata.cache_dir", ".ckdata-cache")) {
+  # Checked before keying: a cache hit is then reported like a fresh pull, and a query publish
+  # mode trims gets a key of its own, so a cache built while exploring can't bypass the check.
+  query <- apply_column_policy(query)
   key  <- digest::digest(as.character(dbplyr::remote_query(query)))
   path <- file.path(dir, paste0(key, ".parquet"))
   if (!refresh && file.exists(path)) {
     if (ckdata_verbose()) message("ckdata: reading cached result from ", path)
     return(dplyr::as_tibble(arrow::read_parquet(path)))
   }
-  df <- dplyr::collect(query)
+  # Explore mode keeps collect() from checking the query a second time.
+  df <- withr::with_options(list(ckdata.mode = "explore"), dplyr::collect(query))
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
   arrow::write_parquet(df, path)
   df

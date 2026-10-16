@@ -8,6 +8,11 @@ Set these with \code{\link[=options]{options()}}, for one session or in your \co
 }
 \details{
 \itemize{
+\item \code{ckdata.mode}: what ckdata does when a query reads a column that is deprecated or may change
+without notice. One of \code{"explore"} (the default), \code{"audit"} or \code{"publish"}; see Modes below.
+\item \code{ckdata.allow}: flagged columns to accept anyway, as a named list of \verb{table = column names},
+for example \code{list(mart_responses = c("lrn_type", "item_id"))}. An allowed column is never
+reported or removed, in any mode.
 \item \code{ckdata.verbose}: \code{TRUE} shows the Athena driver's messages while ckdata runs a query, such as
 how much data it scanned, and says when \code{\link[=collect_cached]{collect_cached()}} serves a result from its cache.
 Defaults to \code{FALSE}, which also hides the driver's notice when it retries a failed request, so
@@ -17,3 +22,30 @@ queries and puts it back afterwards.
 \code{".ckdata-cache"}.
 }
 }
+\section{Modes}{
+
+Two kinds of column are flagged:
+\itemize{
+\item \strong{Deprecated} columns, which the lake keeps under an old name until a set removal date. The
+report names each one's replacement.
+\item Every column of a \strong{staging} (\code{stg_}) or \strong{intermediate} (\code{int_}) table, which can change
+without notice, unless a published table in the same query has it too, as a join key does.
+}
+
+ckdata checks a query when \code{\link[dplyr:collect]{dplyr::collect()}} or \code{\link[=collect_cached]{collect_cached()}} runs it. The check reads only
+the query's SQL and columns, never the data.
+\itemize{
+\item \code{"explore"}: nothing is checked. Use it while you work things out.
+\item \code{"audit"}: a warning names the flagged columns the query uses or returns, and nothing else
+changes, so one run of a script lists what to fix and the script still finishes.
+\item \code{"publish"}: the same warning, and flagged columns the query returns are removed from it before
+it runs, so code that reads them fails now rather than on the removal date. A query that would
+return nothing else fails instead. Use it for the final run of a document.
+}
+
+The modes are a helper for the common cases, not a guarantee. Because the check reads only the
+SQL, a flagged column that is renamed, or that a join returns as \code{.x} or \code{.y}, is reported but
+not removed; a query whose first table did not come from \code{\link[=lake_tbl]{lake_tbl()}} is checked only by
+\code{\link[=collect_cached]{collect_cached()}}; and now and then a warning names a column the query did not need.
+}
+

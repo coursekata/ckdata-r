@@ -1,5 +1,8 @@
-# Package-level state: holds the single managed DBI connection for the session.
+# Package-level state for the session: the managed DBI connection (con), opened on first use, and
+# the columns of every lake table opened so far (tables), one row per column under the table's
+# quoted path. The column check finds a query's tables by looking for these paths in its SQL.
 the <- new.env(parent = emptyenv())
+the$tables <- tibble::tibble(path = character(), table = character(), column = character())
 
 #' A lazy table reference into the CourseKata data lake.
 #'
@@ -7,6 +10,9 @@ the <- new.env(parent = emptyenv())
 #' close a connection yourself. The result is an ordinary dbplyr `tbl`: pipe it through dplyr
 #' verbs (`filter()`, `count()`, ...), `collect()` or [collect_cached()] it, `show_query()` it,
 #' or join two `lake_tbl()` results together — they share the one managed connection.
+#'
+#' Collecting it checks the query for deprecated and unstable columns, as the `ckdata.mode` option
+#' asks; see [ckdata_options].
 #'
 #' @param table Name of the table in the data lake.
 #' @param schema Database the table lives in; defaults to the marts database.
@@ -17,13 +23,30 @@ lake_tbl <- function(table, schema = "ck_datalake_prd_marts_app") {
   tbl <- dplyr::tbl(lake_con(), dbplyr::in_schema(schema, table))
   # dbplyr keeps this class through verbs and joins, so collect() reaches collect.tbl_ckdata().
   class(tbl) <- c("tbl_ckdata", class(tbl))
+  register_lake_table(tbl)
   tbl
 }
 
 #' @exportS3Method dplyr::collect
 collect.tbl_ckdata <- function(x, ...) {
   local_driver_options()
+  x <- apply_column_policy(x)
   NextMethod()
+}
+
+# Record lake table `tbl`'s columns, replacing any earlier record of the same table.
+register_lake_table <- function(tbl) {
+  entry <- lake_table_columns(tbl)
+  the$tables <- the$tables |>
+    dplyr::anti_join(entry, by = "path") |>
+    dplyr::bind_rows(entry)
+}
+
+# One row per column of lake table `tbl`, under its quoted path.
+lake_table_columns <- function(tbl) {
+  path <- dbplyr::remote_table(tbl)
+  table <- dbplyr::table_path_name(path, dbplyr::remote_con(tbl))
+  tibble::tibble(path = as.character(path), table = table, column = colnames(tbl))
 }
 
 # Set noctua the way ckdata's queries need until the calling function returns. clear_s3_resource =
