@@ -20,3 +20,7 @@ close a connection yourself. The result is an ordinary dbplyr \code{tbl}: pipe i
 verbs (\code{filter()}, \code{count()}, ...), \code{collect()} or \code{\link[=collect_cached]{collect_cached()}} it, \code{show_query()} it,
 or join two \code{lake_tbl()} results together — they share the one managed connection.
 }
+\details{
+Collecting it checks the query for deprecated and unstable columns, as the \code{ckdata.mode} option
+asks; see \link{ckdata_options}.
+}

@@ -26,3 +26,26 @@ test_that("a cache hit is silent unless ckdata.verbose is TRUE", {
   withr::local_options(ckdata.verbose = TRUE)
   expect_message(collect_cached(q, dir = dir), "reading cached result")
 })
+
+test_that("a cache built while exploring does not hand flagged columns to publish mode", {
+  q <- local_classes_lake_tbl()
+  dir <- withr::local_tempdir()
+  collect_cached(q, dir = dir)
+
+  withr::local_options(ckdata.mode = "publish", ckdata.allow = list(int_classes = "class_id"))
+  expect_warning(out <- collect_cached(q, dir = dir), class = "ckdata_flagged_columns")
+  expect_named(out, "class_id")
+})
+
+test_that("collect_cached checks a query once, whether or not the cache has it", {
+  q <- local_classes_lake_tbl()
+  dir <- withr::local_tempdir()
+  withr::local_options(ckdata.mode = "audit")
+
+  expect_length(testthat::capture_warnings(first <- collect_cached(q, dir = dir)), 1L)
+  DBI::dbExecute(dbplyr::remote_con(q), "INSERT INTO int_classes VALUES (3, 0)")
+  expect_length(testthat::capture_warnings(second <- collect_cached(q, dir = dir)), 1L)
+
+  # Audit mode leaves the query as it is, so the second call is served from the first call's cache.
+  expect_equal(second, first)
+})
