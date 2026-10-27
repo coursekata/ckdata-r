@@ -72,7 +72,9 @@ lake_con <- function() {
       s3_staging_dir = lake_env("CK_DATALAKE_S3_STAGING_DIR"),
       region_name    = lake_env("CK_DATALAKE_REGION"),
       work_group     = lake_env("CK_DATALAKE_WORKGROUP"),
-      profile_name   = lake_env("CK_DATALAKE_INTERNAL_PROFILE", required = FALSE)
+      profile_name   = lake_env("CK_DATALAKE_INTERNAL_PROFILE", required = FALSE),
+      # noctua assumes the role once, for an hour, and dbIsValid() stays TRUE after it lapses.
+      role_arn       = lake_env("CK_DATALAKE_ROLE_ARN", required = FALSE)
     )
   }
   the$con

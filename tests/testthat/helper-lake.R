@@ -42,6 +42,31 @@ local_two_schema_lake <- function(env = parent.frame()) {
   local_lake_session(con, env)
 }
 
+# The arguments lake_con() opens its connection with, given these environment variables on top of
+# placeholder required settings. A stand-in for DBI::dbConnect() records them, so nothing reaches
+# AWS.
+lake_con_args <- function(...) {
+  withr::local_envvar(
+    CK_DATALAKE_S3_STAGING_DIR = "s3://bucket/results/",
+    CK_DATALAKE_REGION = "us-west-2",
+    CK_DATALAKE_WORKGROUP = "workgroup",
+    CK_DATALAKE_INTERNAL_PROFILE = NA,
+    CK_DATALAKE_ROLE_ARN = NA
+  )
+  withr::local_envvar(...)
+  args <- NULL
+  testthat::local_mocked_bindings(
+    dbConnect = function(drv, ...) {
+      args <<- list(...)
+      structure(list(), class = "stand_in_con")
+    },
+    .package = "DBI"
+  )
+  rlang::local_bindings(con = NULL, .env = the)
+  lake_con()
+  args
+}
+
 # A plain lazy table (not a lake table) over an in-memory SQLite copy of `df`.
 local_memory_tbl <- function(df, name = "t", env = parent.frame()) {
   dplyr::tbl(local_memory_con(df, name, env), name)
