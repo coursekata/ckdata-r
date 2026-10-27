@@ -37,7 +37,7 @@ options(ckdata.schema = "research")            # every call that names no databa
 
 When the call names no database, the `ckdata.schema` option decides, then the `CK_DATALAKE_SCHEMA` environment variable, then the marts. Set the option in a script or `.Rprofile`; set the variable where the environment, not the script, decides, such as a research container.
 
-The `research` database holds views over the marts, each named without the `mart_` prefix: `research.responses` reads `mart_responses`. The views of students and their activity keep only students who take part in research, in classes that are neither tests nor drafts; `research.classes` keeps only those classes; and every view publishes only columns reviewed for research use. A study confined to `research` therefore has no consent or test-class filter to apply. An identity that may read only these views cannot see the marts at all.
+The `research` database holds views named after the marts without their `mart_` prefix, so `research.responses` corresponds to `mart_responses`. The lake's own documentation describes what each table and view holds.
 
 ## Query with dbplyr
 
@@ -45,9 +45,7 @@ The `research` database holds views over the marts, each named without the `mart
 
 ```{r}
 cohort <- lake_tbl("mart_classes") |>
-  filter(!is_test, !is_draft,
-         institution_type == "higher_ed",
-         academic_year == "2025-2026")
+  filter(institution_type == "higher_ed", academic_year == "2025-2026")
 
 classes <- collect(cohort)
 ```
@@ -59,13 +57,12 @@ dbplyr turns the filter into the `WHERE` clause it sends to Athena, so only matc
 ```{r}
 responses <- lake_tbl("mart_responses") |>
   semi_join(cohort, by = "class_id") |>
-  filter(is_included_in_research) |>
   collect()
 ```
 
-The join runs in Athena. Pulling `classes$class_id` into R and splicing it into an `IN (...)` list works for a few ids and breaks down at thousands; `semi_join()` has no such ceiling. The marts hold every student, so the filter on `is_included_in_research` leaves out students who opted out of research.
+The join runs in Athena. Pulling `classes$class_id` into R and splicing it into an `IN (...)` list works for a few ids and breaks down at thousands; `semi_join()` has no such ceiling.
 
-**The same cohort from the research views.** The views have already applied both filters:
+**The same cohort from the research views.** Point the session at the `research` database and name the views without their prefix:
 
 ```{r}
 options(ckdata.schema = "research")
