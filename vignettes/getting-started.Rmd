@@ -1,0 +1,109 @@
+---
+title: "Getting started: connect to the lake"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started: connect to the lake}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+ckdata reads the CourseKata data lake through Amazon Athena. Before your first query, R needs to know where the lake is and which AWS identity to connect as. You set that up once with a few environment variables, then check it with one query. `?ckdata_settings` lists every setting; this guide puts them in order.
+
+## Install
+
+```{r}
+install.packages("pak")
+options(repos = c(CRAN = "https://p3m.dev/cran/2026-06-15"))
+pak::pak("coursekata/ckdata-r")
+```
+
+ckdata needs noctua, the Athena driver it uses, and dbplyr older than 2.6.0, which noctua does not work with. Current CRAN carries neither, so the second line points this R session at a dated snapshot of CRAN that has both. If another package later upgrades dbplyr, reinstall ckdata the same way. To have `vignette()` find this guide, run `options(pkg.build_vignettes = TRUE)` before installing.
+
+## Tell R where the lake is
+
+Whoever gives you access to the lake gives you three values. Put them in `~/.Renviron` (`usethis::edit_r_environ()` opens it):
+
+```
+CK_DATALAKE_S3_STAGING_DIR=s3://<bucket>/<prefix>/
+CK_DATALAKE_REGION=<region>
+CK_DATALAKE_WORKGROUP=<workgroup>
+```
+
+The first is where Athena writes query results, the second is the AWS region the lake is in, and the third is the Athena workgroup your queries run in. They are settings, not secrets, and they live outside the package so a moved lake is an edit to this file rather than a new ckdata release. R reads `~/.Renviron` only when it starts, so restart R after editing it.
+
+## Choose who you connect as
+
+ckdata connects as one AWS identity, chosen in one of three ways.
+
+**A named profile.** On your own machine you usually sign in through AWS single sign-on. Describe the sign-in as a profile in `~/.aws/config`, with the values your administrator gives you:
+
+```
+[sso-session <session>]
+sso_start_url = <start URL>
+sso_region = <sign-in region>
+sso_registration_scopes = sso:account:access
+
+[profile <profile>]
+sso_session = <session>
+sso_account_id = <account>
+sso_role_name = <role>
+region = <region>
+```
+
+Then name the profile in `~/.Renviron`:
+
+```
+CK_DATALAKE_INTERNAL_PROFILE=<profile>
+```
+
+The variable points only ckdata at this profile, so any other AWS setup on the machine is untouched. Sign in from a terminal with the AWS command-line tool:
+
+```{bash}
+aws sso login --profile <profile>
+```
+
+A single sign-on session lasts a few hours. When queries start failing with an expired-token error, sign in again. The next query usually picks up the new session; if it does not, restart R.
+
+**The environment's own identity.** In a container, a scheduled job or a cloud machine that already has an AWS role, set no profile. ckdata then finds credentials the way every AWS SDK does: access keys in the environment, the `default` profile, container or web identity credentials, then the machine's role.
+
+**A role assumed on top.** Some identities may not query the lake themselves but may assume a role that can, as when a research container's own role is allowed to assume a reader role in the lake's account. Name that role:
+
+```
+CK_DATALAKE_ROLE_ARN=arn:aws:iam::<account>:role/<role>
+```
+
+ckdata finds credentials as above, assumes the role and connects as it. The assumed credentials last an hour and are not renewed, so a session that queries for longer than that must restart R.
+
+## Check the connection
+
+Restart R once after changing `~/.Renviron`, then run one small query:
+
+```{r}
+library(ckdata)
+library(dplyr)
+
+lake_tbl("mart_classes") |>
+  count() |>
+  collect()
+```
+
+A row count back means you are connected, signed in and reading the lake. The same check, with a cache round trip, ships with the package:
+
+```{r}
+source(system.file("smoke-test.R", package = "ckdata"))
+```
+
+If an identity may read only the `research` views, set `CK_DATALAKE_SCHEMA=research` as well; the smoke test then counts `research.classes` instead. `vignette("querying-the-lake", package = "ckdata")` explains the databases.
+
+## When it fails
+
+- **`ckdata: CK_DATALAKE_... is not set`.** A required setting is missing. Add it to `~/.Renviron` and restart R.
+- **An expired or missing token.** Your sign-in lapsed. Sign in again with `aws sso login`.
+- **Access denied, or a table that does not exist.** The identity cannot see that database or table. A reader confined to the `research` views cannot see the marts, so set `CK_DATALAKE_SCHEMA=research`.
+- **It still uses old settings.** The connection opens once per session, so restart R.
+
+Each query leaves its result file in the staging location. A read-only identity cannot delete it, and ckdata tells the driver not to try, so tidying that location is the lake's job, not yours.
