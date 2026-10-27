@@ -14,6 +14,10 @@
 #'   queries and puts it back afterwards.
 #' - `ckdata.cache_dir`: where [collect_cached()] keeps its parquet files. Defaults to
 #'   `".ckdata-cache"`.
+#' - `ckdata.schema`: the database [lake_tbl()] opens a table from when the call names none. When
+#'   the option is unset, the `CK_DATALAKE_SCHEMA` environment variable sets it, and when neither is
+#'   set it is the marts database, `"ck_datalake_prd_marts_app"`. An environment that may read only
+#'   the `research` views sets `CK_DATALAKE_SCHEMA=research` once, and its scripts name no schema.
 #'
 #' @section Modes:
 #' Two kinds of column are flagged:
@@ -43,6 +47,12 @@ NULL
 
 ckdata_verbose <- function() {
   rlang::is_true(getOption("ckdata.verbose"))
+}
+
+ckdata_schema <- function() {
+  getOption("ckdata.schema") %||%
+    lake_env("CK_DATALAKE_SCHEMA", required = FALSE) %||%
+    "ck_datalake_prd_marts_app"
 }
 
 ckdata_mode <- function() {

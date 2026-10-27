@@ -91,3 +91,51 @@ test_that("a table opened again is checked against its current columns, each onc
   cnd <- expect_warning(dplyr::collect(q), class = "ckdata_flagged_columns")
   expect_equal(stringr::str_count(conditionMessage(cnd), stringr::fixed("(int_classes)")), 2L)
 })
+
+schema_opened <- function(...) colnames(lake_tbl("t", ...))
+
+test_that("lake_tbl() reads from the marts unless a schema is set", {
+  local_two_schema_lake()
+
+  expect_equal(schema_opened(), "ck_datalake_prd_marts_app")
+})
+
+test_that("CK_DATALAKE_SCHEMA sets the schema lake_tbl() reads from", {
+  local_two_schema_lake()
+  withr::local_envvar(CK_DATALAKE_SCHEMA = "research")
+
+  expect_equal(schema_opened(), "research")
+})
+
+test_that("an empty CK_DATALAKE_SCHEMA counts as unset", {
+  local_two_schema_lake()
+  withr::local_envvar(CK_DATALAKE_SCHEMA = "")
+
+  expect_equal(schema_opened(), "ck_datalake_prd_marts_app")
+})
+
+test_that("the ckdata.schema option takes precedence over CK_DATALAKE_SCHEMA", {
+  local_two_schema_lake()
+  withr::local_envvar(CK_DATALAKE_SCHEMA = "ck_datalake_prd_marts_app")
+  withr::local_options(ckdata.schema = "research")
+
+  expect_equal(schema_opened(), "research")
+})
+
+test_that("a schema named in the call takes precedence over both settings", {
+  local_two_schema_lake()
+  withr::local_envvar(CK_DATALAKE_SCHEMA = "research")
+  withr::local_options(ckdata.schema = "research")
+
+  expect_equal(schema_opened(schema = "ck_datalake_prd_marts_app"), "ck_datalake_prd_marts_app")
+})
+
+test_that("the mode checks a table opened from the configured schema", {
+  withr::local_options(ckdata.schema = "main")
+  local_lake_session(local_memory_con(data.frame(class_id = 1:2, is_test = FALSE), "int_classes"))
+  q <- lake_tbl("int_classes")
+  withr::local_options(ckdata.mode = "publish", ckdata.allow = list(int_classes = "class_id"))
+
+  expect_warning(out <- dplyr::collect(q), "is_test", class = "ckdata_flagged_columns")
+  expect_equal(out, tibble::tibble(class_id = 1:2))
+})

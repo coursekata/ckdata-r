@@ -20,6 +20,10 @@ a throttled query waits without saying so. ckdata changes the driver's setting o
 queries and puts it back afterwards.
 \item \code{ckdata.cache_dir}: where \code{\link[=collect_cached]{collect_cached()}} keeps its parquet files. Defaults to
 \code{".ckdata-cache"}.
+\item \code{ckdata.schema}: the database \code{\link[=lake_tbl]{lake_tbl()}} opens a table from when the call names none. When
+the option is unset, the \code{CK_DATALAKE_SCHEMA} environment variable sets it, and when neither is
+set it is the marts database, \code{"ck_datalake_prd_marts_app"}. An environment that may read only
+the \code{research} views sets \code{CK_DATALAKE_SCHEMA=research} once, and its scripts name no schema.
 }
 }
 \section{Modes}{

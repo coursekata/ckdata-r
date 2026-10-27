@@ -26,6 +26,22 @@ local_memory_con <- function(df, name, env = parent.frame()) {
   con
 }
 
+# A lake session in which table `t` exists in the marts and in `research`, each copy with one column
+# named after its database, so colnames() tells which one lake_tbl() opened. Neither schema setting
+# is set until the calling test sets one.
+local_two_schema_lake <- function(env = parent.frame()) {
+  testthat::skip_if_not_installed("RSQLite")
+  con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  withr::defer(DBI::dbDisconnect(con), envir = env)
+  for (schema in c("ck_datalake_prd_marts_app", "research")) {
+    DBI::dbExecute(con, paste0("ATTACH DATABASE ':memory:' AS ", schema))
+    DBI::dbExecute(con, paste0("CREATE TABLE ", schema, ".t (", schema, " INTEGER)"))
+  }
+  withr::local_options(ckdata.schema = NULL, .local_envir = env)
+  withr::local_envvar(CK_DATALAKE_SCHEMA = NA, .local_envir = env)
+  local_lake_session(con, env)
+}
+
 # A plain lazy table (not a lake table) over an in-memory SQLite copy of `df`.
 local_memory_tbl <- function(df, name = "t", env = parent.frame()) {
   dplyr::tbl(local_memory_con(df, name, env), name)

@@ -4,12 +4,13 @@
 \alias{lake_tbl}
 \title{A lazy table reference into the CourseKata data lake.}
 \usage{
-lake_tbl(table, schema = "ck_datalake_prd_marts_app")
+lake_tbl(table, schema = ckdata_schema())
 }
 \arguments{
 \item{table}{Name of the table in the data lake.}
 
-\item{schema}{Database the table lives in; defaults to the marts database.}
+\item{schema}{Database the table lives in. Defaults to the \code{ckdata.schema} option, then the
+\code{CK_DATALAKE_SCHEMA} environment variable, then the marts database; see \link{ckdata_options}.}
 }
 \value{
 A lazy dbplyr \code{tbl}.
