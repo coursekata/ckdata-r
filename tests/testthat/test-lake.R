@@ -139,3 +139,13 @@ test_that("the mode checks a table opened from the configured schema", {
   expect_warning(out <- dplyr::collect(q), "is_test", class = "ckdata_flagged_columns")
   expect_equal(out, tibble::tibble(class_id = 1:2))
 })
+
+test_that("CK_DATALAKE_ROLE_ARN names the role the connection assumes", {
+  arn <- "arn:aws:iam::123456789012:role/lake-reader"
+
+  expect_equal(lake_con_args(CK_DATALAKE_ROLE_ARN = arn)$role_arn, arn)
+})
+
+test_that("without CK_DATALAKE_ROLE_ARN the connection assumes no role", {
+  expect_null(lake_con_args()$role_arn)
+})
