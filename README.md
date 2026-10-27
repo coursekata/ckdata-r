@@ -23,6 +23,17 @@ lake_tbl("mart_classes") |>
 connection opened and managed for you. `collect_cached()` is a drop-in for
 `dplyr::collect()` that caches big pulls to a local parquet file.
 
+## Choosing the database
+
+`lake_tbl()` reads from the marts unless told otherwise. Name another database in the call, or set a default once: the `ckdata.schema` option, or the `CK_DATALAKE_SCHEMA` environment variable, which applies when the option is unset.
+
+```r
+lake_tbl("responses", schema = "research")  # this call only
+options(ckdata.schema = "research")         # every call that names no schema
+```
+
+An environment that may read only the `research` views, such as a research container, sets `CK_DATALAKE_SCHEMA=research`, and its scripts name no schema.
+
 ## Exploring, then publishing
 
 Deprecated columns leave the lake on a set date, and staging (`stg_`) and

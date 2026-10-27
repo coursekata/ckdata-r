@@ -1,3 +1,3 @@
 #' @keywords internal
-#' @importFrom rlang .data
+#' @importFrom rlang .data %||%
 "_PACKAGE"
