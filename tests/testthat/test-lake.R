@@ -149,3 +149,15 @@ test_that("CK_DATALAKE_ROLE_ARN names the role the connection assumes", {
 test_that("without CK_DATALAKE_ROLE_ARN the connection assumes no role", {
   expect_null(lake_con_args()$role_arn)
 })
+
+test_that("a missing required setting names itself and the help topic that explains it", {
+  withr::local_envvar(CK_DATALAKE_REGION = NA)
+
+  expect_error(lake_env("CK_DATALAKE_REGION"), "CK_DATALAKE_REGION is not set.*\\?ckdata_settings")
+})
+
+test_that("a missing optional setting reads as unset", {
+  withr::local_envvar(CK_DATALAKE_INTERNAL_PROFILE = "")
+
+  expect_null(lake_env("CK_DATALAKE_INTERNAL_PROFILE", required = FALSE))
+})

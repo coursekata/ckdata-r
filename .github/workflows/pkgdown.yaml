@@ -27,10 +27,10 @@ jobs:
         with:
           use-public-rspm: false
 
-      # ckdata requires dbplyr < 2.6.0, but the default repositories only carry
-      # 2.6.0. Pin the package repo to a dated snapshot that still has 2.5.2 (with
-      # noble binaries) so the dependency install resolves. Drop once the cap is
-      # lifted (see the note on the install step in the Datalake 'Connect' guide).
+      # ckdata requires dbplyr < 2.6.0 and noctua, and current CRAN has neither.
+      # Pin the package repo to a dated snapshot that has both (with noble
+      # binaries) so the dependency install resolves, as the README's Installation
+      # section tells users to.
       - name: Pin the package repo (dbplyr < 2.6.0)
         run: echo 'options(repos = c(CRAN = "https://p3m.dev/cran/__linux__/noble/2026-06-15"))' >> ~/.Rprofile
 

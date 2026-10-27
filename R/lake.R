@@ -11,6 +11,9 @@ the$tables <- tibble::tibble(path = character(), table = character(), column = c
 #' verbs (`filter()`, `count()`, ...), `collect()` or [collect_cached()] it, `show_query()` it,
 #' or join two `lake_tbl()` results together — they share the one managed connection.
 #'
+#' The first call in a session opens the connection from the environment variables described in
+#' [ckdata_settings]. Opening a table asks Athena for its columns without reading any rows.
+#'
 #' Collecting it checks the query for deprecated and unstable columns, as the `ckdata.mode` option
 #' asks; see [ckdata_options].
 #'
@@ -63,8 +66,8 @@ local_driver_options <- function(env = parent.frame()) {
 
 # Return the package-managed lake connection, opening it on first use and reusing it afterwards.
 # Self-heals: a cached connection that has gone invalid (dbIsValid() is FALSE) is reopened.
-# Settings come from the environment (see the Datalake onboarding docs), so a moved bucket or a
-# dev pipeline is configuration, not a package change.
+# Settings come from the environment (see ?ckdata_settings), so a moved bucket or a dev pipeline
+# is configuration, not a package change.
 lake_con <- function() {
   if (is.null(the$con) || !DBI::dbIsValid(the$con)) {
     the$con <- DBI::dbConnect(
@@ -91,9 +94,8 @@ lake_env <- function(name, required = TRUE) {
   if (required) {
     stop(
       paste0(
-        "ckdata: ", name,
-        " is not set; add it to your ~/.Renviron ",
-        "(see the CourseKata Datalake onboarding docs)."
+        "ckdata: ", name, " is not set. ",
+        "See ?ckdata_settings for what it holds and where to set it."
       ),
       call. = FALSE
     )

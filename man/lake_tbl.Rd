@@ -22,6 +22,9 @@ verbs (\code{filter()}, \code{count()}, ...), \code{collect()} or \code{\link[=c
 or join two \code{lake_tbl()} results together — they share the one managed connection.
 }
 \details{
+The first call in a session opens the connection from the environment variables described in
+\link{ckdata_settings}. Opening a table asks Athena for its columns without reading any rows.
+
 Collecting it checks the query for deprecated and unstable columns, as the \code{ckdata.mode} option
 asks; see \link{ckdata_options}.
 }

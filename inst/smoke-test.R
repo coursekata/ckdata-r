@@ -1,12 +1,13 @@
 #!/usr/bin/env Rscript
 # Verify your ckdata setup, end to end.
 #
-# Run it either way:
-#   - from a clone of the repo:    Rscript inst/smoke-test.R
-#   - from the installed package:  Rscript -e 'source(system.file("smoke-test.R", package = "ckdata"))'
+# Run it from a clone of the repo:
+#   Rscript inst/smoke-test.R
+# or from the installed package:
+#   Rscript -e 'source(system.file("smoke-test.R", package = "ckdata"))'
 #
-# The first section runs offline and checks the install. The second needs an AWS
-# sign-in (aws sso login --profile ck-research) and runs a real query.
+# The first section runs offline and checks the install. The second connects with the settings in
+# ?ckdata_settings and counts the rows of one table, so it reads no row's values.
 
 suppressMessages({
   library(ckdata)
@@ -22,29 +23,48 @@ if (packageVersion("dbplyr") >= "2.6.0") {
   stop("dbplyr ", packageVersion("dbplyr"), " is installed, but ckdata needs dbplyr < 2.6.0 ",
        "(noctua breaks on 2.6.0). Reinstall ckdata to pull a compatible dbplyr.", call. = FALSE)
 }
-cat("  ok  ckdata loads; lake_tbl() and collect_cached() present\n")
+cat("  ok  ckdata ", as.character(packageVersion("ckdata")), " loads; lake_tbl() and ",
+    "collect_cached() present\n", sep = "")
 cat("  ok  dbplyr ", as.character(packageVersion("dbplyr")), " (< 2.6.0)\n", sep = "")
 
-cat("\n== lake connection (needs `aws sso login --profile ck-research`) ==\n")
-connected <- tryCatch({
-  n <- lake_tbl("mart_classes") |> count() |> collect()
-  cat("  ok  connected — mart_classes has ", format(n$n[[1]], big.mark = ","), " rows\n", sep = "")
+settings <- c(
+  "CK_DATALAKE_S3_STAGING_DIR", "CK_DATALAKE_REGION", "CK_DATALAKE_WORKGROUP",
+  "CK_DATALAKE_INTERNAL_PROFILE", "CK_DATALAKE_ROLE_ARN", "CK_DATALAKE_SCHEMA"
+)
+for (name in settings) {
+  cat("  ", if (nzchar(Sys.getenv(name))) "set  " else "unset", " ", name, "\n", sep = "")
+}
 
-  d <- file.path(tempdir(), "ckdata-smoke-cache")
-  q <- function() lake_tbl("mart_classes") |> head(5) |> collect_cached(dir = d)
-  invisible(q())
-  invisible(suppressMessages(q()))
-  cat("  ok  collect_cached wrote and re-read a parquet cache\n")
+schema <- ckdata:::ckdata_schema()
+table <- if (identical(schema, "research")) "classes" else "mart_classes"
+
+cat("\n== lake connection: counting ", schema, ".", table, " ==\n", sep = "")
+connected <- tryCatch({
+  n <- lake_tbl(table) |> count() |> collect()
+  cat("  ok  connected; ", table, " has ", format(n$n[[1]], big.mark = ","), " rows\n", sep = "")
+
+  d <- tempfile("ckdata-smoke-cache-")
+  q <- function() lake_tbl(table) |> count() |> collect_cached(dir = d)
+  first <- q()
+  stopifnot("the cache holds one result" = length(list.files(d, "\\.parquet$")) == 1)
+  stopifnot("the cached result matches" = as.numeric(q()$n) == as.numeric(first$n))
+  cat("  ok  collect_cached() wrote and re-read a parquet cache\n")
   TRUE
 }, error = function(e) {
   cat("  FAILED: ", conditionMessage(e), "\n", sep = "")
-  cat("  If this is a sign-in/expiry error, run  aws sso login --profile ck-research  and rerun.\n")
-  cat("  If it names a missing CK_DATALAKE_* setting, finish the setup in the Datalake 'Connect' guide.\n")
+  cat("  A sign-in or expired-token error: sign in again (for a single sign-on profile,\n",
+      "  aws sso login --profile <profile>) and rerun.\n", sep = "")
+  cat("  A missing CK_DATALAKE_* setting: see ?ckdata_settings.\n")
+  cat("  Access denied or no such table: see \"When it fails\" in the getting-started guide,\n",
+      "  vignette(\"getting-started\", package = \"ckdata\") or coursekata.github.io/ckdata-r.\n",
+      sep = "")
   FALSE
 })
 
 if (isTRUE(connected)) {
-  cat("\nAll good — your ckdata setup works end to end.\n")
+  cat("\nAll good: your ckdata setup works end to end.\n")
+} else if (interactive()) {
+  stop("the ckdata smoke test failed", call. = FALSE)
 } else {
   quit(status = 1L)
 }
