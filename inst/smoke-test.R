@@ -44,11 +44,14 @@ connected <- tryCatch({
   cat("  ok  connected; ", table, " has ", format(n$n[[1]], big.mark = ","), " rows\n", sep = "")
 
   d <- tempfile("ckdata-smoke-cache-")
-  q <- function() lake_tbl(table) |> count() |> collect_cached(dir = d)
-  first <- q()
-  stopifnot("the cache holds one result" = length(list.files(d, "\\.parquet$")) == 1)
-  stopifnot("the cached result matches" = as.numeric(q()$n) == as.numeric(first$n))
-  cat("  ok  collect_cached() wrote and re-read a parquet cache\n")
+  first <- lake_tbl(table) |> count() |> collect_cached(dir = d)
+  cached <- list.files(d, "\\.parquet$", full.names = TRUE)
+  stopifnot("the cache holds one result" = length(cached) == 1)
+  stopifnot(
+    "the cache reads back the same count" =
+      as.numeric(arrow::read_parquet(cached)$n) == as.numeric(first$n)
+  )
+  cat("  ok  collect_cached() wrote a parquet cache that reads back\n")
   TRUE
 }, error = function(e) {
   cat("  FAILED: ", conditionMessage(e), "\n", sep = "")
