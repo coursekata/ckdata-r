@@ -11,6 +11,7 @@ A thin R interface to the CourseKata analytical data lake: get lazy dbplyr table
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://coursekata.github.io/ckdata-r}
   \item \url{https://github.com/coursekata/ckdata-r}
 }
 
