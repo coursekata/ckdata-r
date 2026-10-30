@@ -28,7 +28,7 @@ SQL; later calls with the same query read the cache instead of re-scanning the l
 page in slowly, so caching makes iterating on an analysis fast.
 }
 \details{
-The cache is keyed on the query only, NOT on the data — the lake rebuilds nightly, so a
-cache made before a rebuild is stale. Pass \code{refresh = TRUE} (or delete the cache directory)
-to re-pull.
+The cache is keyed on the query's SQL, not on the data. The lake rebuilds nightly, so a cache
+made before a rebuild is stale. Pass \code{refresh = TRUE}, or delete the cache directory, to pull
+again.
 }
