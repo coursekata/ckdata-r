@@ -40,15 +40,18 @@ An empty value counts as unset.
 
 \section{Credentials}{
 
-With \code{CK_DATALAKE_INTERNAL_PROFILE} set, ckdata connects as that profile. Without it, the AWS
-SDK's default chain applies, in order: the \code{AWS_ACCESS_KEY_ID} and \code{AWS_SECRET_ACCESS_KEY}
-environment variables, the profile \code{AWS_PROFILE} names (or \code{default}), container credentials,
-including a web identity token, and finally the instance's role.
+With \code{CK_DATALAKE_INTERNAL_PROFILE} set, ckdata connects as that profile, unless
+\code{AWS_ACCESS_KEY_ID} and \code{AWS_SECRET_ACCESS_KEY} are both set, which take precedence over any
+profile. Without a profile, the AWS SDK's default chain applies, in order: those environment
+variables, the profile \code{AWS_PROFILE} names (or \code{default}), container credentials, including a web
+identity token, and finally the instance's role.
 
 With \code{CK_DATALAKE_ROLE_ARN} set, ckdata first finds credentials the same way, then uses them to
-assume that role and connects as the role. The assumed credentials last one hour and ckdata does
-not renew them, so a session that queries for longer than that must restart R. The variable is
-not \code{AWS_ROLE_ARN}, which the web identity step reads for the identity ckdata starts from.
+assume that role and connects as the role. The assumed credentials expire an hour after the
+connection opens and ckdata does not renew them. In the last 15 minutes each query warns that the
+connection will expire, and after the hour every query fails with an expired-token error until R
+restarts. The variable is not \code{AWS_ROLE_ARN}, which the web identity step reads for the identity
+ckdata starts from.
 }
 
 \section{When settings take effect}{
