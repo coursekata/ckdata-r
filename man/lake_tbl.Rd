@@ -10,7 +10,8 @@ lake_tbl(table, schema = ckdata_schema())
 \item{table}{Name of the table in the data lake.}
 
 \item{schema}{Database the table lives in. Defaults to the \code{ckdata.schema} option, then the
-\code{CK_DATALAKE_SCHEMA} environment variable, then the marts database; see \link{ckdata_options}.}
+\code{CK_DATALAKE_SCHEMA} environment variable, then the marts database; see \link{ckdata_options} and
+\link{ckdata_settings}.}
 }
 \value{
 A lazy dbplyr \code{tbl}.

@@ -19,7 +19,8 @@ the$tables <- tibble::tibble(path = character(), table = character(), column = c
 #'
 #' @param table Name of the table in the data lake.
 #' @param schema Database the table lives in. Defaults to the `ckdata.schema` option, then the
-#'   `CK_DATALAKE_SCHEMA` environment variable, then the marts database; see [ckdata_options].
+#'   `CK_DATALAKE_SCHEMA` environment variable, then the marts database; see [ckdata_options] and
+#'   [ckdata_settings].
 #' @return A lazy dbplyr `tbl`.
 #' @export
 lake_tbl <- function(table, schema = ckdata_schema()) {
@@ -83,9 +84,8 @@ lake_con <- function() {
   the$con
 }
 
-# A connection setting from the environment. required = TRUE settings fail with a fix-it pointer
-# if unset; optional ones return NULL so AWS's ambient chain applies (how a role-based pipeline
-# authenticates without a named profile).
+# A setting from the environment, or NULL when it is unset or empty. A required setting that is
+# unset stops with a pointer to ?ckdata_settings.
 lake_env <- function(name, required = TRUE) {
   value <- Sys.getenv(name, unset = "")
   if (nzchar(value)) {
