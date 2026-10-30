@@ -15,29 +15,20 @@ This guide assumes a working connection; `vignette("getting-started", package = 
 
 ckdata gives you a table reference and a caching `collect()`. Everything else is dbplyr: you build a query from `lake_tbl()` and dplyr verbs, dbplyr translates it to SQL, and Athena runs it. You never write a SQL string or open a connection.
 
-## The two functions
-
-- **`lake_tbl(table, schema)`** returns a lazy dbplyr table in the lake. The first call in a session opens the Athena connection, and every later call reuses it, so tables from different calls can be joined.
-- **`collect_cached(query)`** is `dplyr::collect()` with a local parquet cache. The first run pulls the result and writes it to disk; later runs of the same query read the file instead of scanning the lake again.
-
-Nothing in the package is specific to a table. Table names and queries live in your scripts, so the package needs no release when the lake's tables change.
-
 ## Which database
 
-The lake keeps its tables in several databases. `lake_tbl()` reads from the marts database, `ck_datalake_prd_marts_app`, unless told otherwise:
+The lake keeps its tables in several databases. `lake_tbl()` reads from the marts unless told otherwise:
 
 ```{r}
 library(ckdata)
 library(dplyr)
 
-lake_tbl("mart_classes")                       # the marts
-lake_tbl("classes", schema = "research")       # one call, another database
-options(ckdata.schema = "research")            # every call that names no database
+lake_tbl("mart_classes")                  # the default database
+lake_tbl("classes", schema = "research")  # one call, another database
+ckdata_schema()                           # the default for calls that name none
 ```
 
-When the call names no database, the `ckdata.schema` option decides, then the `CK_DATALAKE_SCHEMA` environment variable, then the marts. Set the option in a script or `.Rprofile`; set the variable where the environment, not the script, decides, such as a research container.
-
-The `research` database holds views named after the marts without their `mart_` prefix, so `research.responses` corresponds to `mart_responses`. The lake's own documentation describes what each table and view holds.
+`?ckdata_schema` explains how to change the default for a script or a whole environment. The `research` database names its views after the marts without the `mart_` prefix: `responses` rather than `mart_responses`. The examples below read the marts; with `research` as the default, drop the prefix from each name. The lake's own documentation describes what each table and view holds.
 
 ## Query with dbplyr
 
@@ -62,23 +53,10 @@ responses <- lake_tbl("mart_responses") |>
 
 The join runs in Athena. Pulling `classes$class_id` into R and splicing it into an `IN (...)` list works for a few ids and breaks down at thousands; `semi_join()` has no such ceiling.
 
-**The same cohort from the research views.** Point the session at the `research` database and name the views without their prefix:
-
-```{r}
-options(ckdata.schema = "research")
-
-cohort <- lake_tbl("classes") |>
-  filter(institution_type == "higher_ed", academic_year == "2025-2026")
-
-responses <- lake_tbl("responses") |>
-  semi_join(cohort, by = "class_id") |>
-  collect()
-```
-
 **Join across tables.** Ordinary dplyr joins work, because every `lake_tbl()` shares the one connection:
 
 ```{r}
-page_views_per_class <- lake_tbl("page_views") |>
+page_views_per_class <- lake_tbl("mart_page_views") |>
   semi_join(cohort, by = "class_id") |>
   count(class_id, name = "page_views") |>
   left_join(select(cohort, class_id, content_name), by = "class_id") |>
@@ -92,44 +70,42 @@ page_views_per_class <- lake_tbl("page_views") |>
 A large pull pages in slowly. Use `collect_cached()` in place of `collect()`:
 
 ```{r}
-responses <- lake_tbl("responses") |>
+responses <- lake_tbl("mart_responses") |>
   semi_join(cohort, by = "class_id") |>
   collect_cached()
 ```
 
-The first run writes the result to a parquet file under `.ckdata-cache/`, or the directory the `ckdata.cache_dir` option names. Later runs of the same query read that file, so you can rework the analysis below the pull without waiting on the lake.
-
-The cache is keyed on the query's SQL, not on the data. The lake rebuilds every night, so a cache made before a rebuild is stale once the rebuild lands. Pass `refresh = TRUE`, or delete the cache directory, to pull again. A finished cohort is safe to leave cached; a cohort still collecting data needs a deliberate refresh.
+Later runs of the same query read a local parquet file instead of the lake, so you can rework the analysis below the pull without waiting. The cache does not notice when the lake changes; `?collect_cached` says when a cached result goes stale and how to pull again.
 
 ## Explore, then publish
 
-The marts keep some columns under old names until a set removal date, and the staging (`stg_`) and intermediate (`int_`) tables can change without notice. ckdata checks each query for those columns when it is collected, as the `ckdata.mode` option asks:
+Some columns are due to leave the lake, and the staging (`stg_`) and intermediate (`int_`) tables can change without notice. ckdata can check each query for them when it is collected. Leave the check off while you work things out, audit once to list what a script still reads, and publish for the final run of a document:
 
 ```{r}
-options(ckdata.mode = "explore")  # the default: nothing is checked
-options(ckdata.mode = "audit")    # warn about each flagged column a query reads
-options(ckdata.mode = "publish")  # warn, and drop flagged columns from the result
+options(ckdata.mode = "explore")  # the default
+options(ckdata.mode = "audit")
+options(ckdata.mode = "publish")
 ```
 
-Explore while you work things out. Audit once to list what a script still reads, since every query warns and the script still finishes. Publish for the final run of a document, so code that reads a column due to leave fails now rather than on the removal date. To keep a flagged column on purpose, name it in `ckdata.allow`:
+To keep a flagged column on purpose, name it in `ckdata.allow`:
 
 ```{r}
 options(ckdata.allow = list(mart_responses = c("lrn_type")))
 ```
 
-The check reads only the query's SQL and columns, never the data. `?ckdata_options` describes what it can and cannot catch.
+`?ckdata_options` says what each mode checks and removes, and what the check cannot catch. The list of columns due to leave ships with ckdata, so a newly deprecated column is flagged only once ckdata is updated.
 
 ## See what Athena did
 
-`options(ckdata.verbose = TRUE)` shows the driver's messages while ckdata runs a query, such as how much data it scanned, and says when `collect_cached()` serves a result from its cache. It is off by default, which also keeps quiet the driver's notice when it retries a throttled request.
+`options(ckdata.verbose = TRUE)` shows the driver's messages while ckdata runs a query, such as how much data it scanned. `?ckdata_options` describes what else it shows and hides.
 
 ## Add your own loader
 
-When you repeat a query shape for different cohorts, wrap it in a function in your own script:
+ckdata has no loader for any particular table. Table names and queries live in your scripts, so a new table in the lake needs no ckdata release. When you repeat a query shape for different cohorts, wrap it in a function in your own script:
 
 ```{r}
 load_responses <- function(cohort) {
-  lake_tbl("responses") |>
+  lake_tbl("mart_responses") |>
     semi_join(cohort, by = "class_id") |>
     collect_cached()
 }
