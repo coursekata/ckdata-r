@@ -31,8 +31,8 @@ their own settings.
 \item \code{CK_DATALAKE_ROLE_ARN}: an IAM role to assume before connecting, for an identity that cannot
 query the lake itself but may assume a role that can, such as a container whose own role may
 assume a reader role in the lake's account.
-\item \code{CK_DATALAKE_SCHEMA}: the database \code{\link[=lake_tbl]{lake_tbl()}} reads from when the call names none, read on
-every call. The \code{ckdata.schema} option takes precedence; see \link{ckdata_options}.
+\item \code{CK_DATALAKE_SCHEMA}: the database \code{\link[=lake_tbl]{lake_tbl()}} reads from when the call names none and the
+\code{ckdata.schema} option is unset; see \code{\link[=ckdata_schema]{ckdata_schema()}}.
 }
 
 An empty value counts as unset.

@@ -18,9 +18,8 @@ the$tables <- tibble::tibble(path = character(), table = character(), column = c
 #' asks; see [ckdata_options].
 #'
 #' @param table Name of the table in the data lake.
-#' @param schema Database the table lives in. Defaults to the `ckdata.schema` option, then the
-#'   `CK_DATALAKE_SCHEMA` environment variable, then the marts database; see [ckdata_options] and
-#'   [ckdata_settings].
+#' @param schema Database the table lives in. Defaults to [ckdata_schema()], the marts unless an
+#'   option or environment variable names another.
 #' @return A lazy dbplyr `tbl`.
 #' @export
 lake_tbl <- function(table, schema = ckdata_schema()) {

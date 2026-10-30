@@ -21,8 +21,8 @@
 #' - `CK_DATALAKE_ROLE_ARN`: an IAM role to assume before connecting, for an identity that cannot
 #'   query the lake itself but may assume a role that can, such as a container whose own role may
 #'   assume a reader role in the lake's account.
-#' - `CK_DATALAKE_SCHEMA`: the database [lake_tbl()] reads from when the call names none, read on
-#'   every call. The `ckdata.schema` option takes precedence; see [ckdata_options].
+#' - `CK_DATALAKE_SCHEMA`: the database [lake_tbl()] reads from when the call names none and the
+#'   `ckdata.schema` option is unset; see [ckdata_schema()].
 #'
 #' An empty value counts as unset.
 #'
