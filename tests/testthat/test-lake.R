@@ -143,20 +143,32 @@ test_that("the mode checks a table opened from the configured schema", {
 test_that("CK_DATALAKE_ROLE_ARN names the role the connection assumes", {
   arn <- "arn:aws:iam::123456789012:role/lake-reader"
 
-  expect_equal(lake_con_args(CK_DATALAKE_ROLE_ARN = arn)$role_arn, arn)
+  expect_equal(lake_con_args(CK_DATALAKE_ROLE_ARN = arn)[["role_arn"]], arn)
 })
 
 test_that("without CK_DATALAKE_ROLE_ARN the connection assumes no role", {
-  expect_null(lake_con_args()$role_arn)
+  expect_null(lake_con_args()[["role_arn"]])
 })
 
-test_that("a missing required setting names itself and the help topic that explains it", {
-  withr::local_envvar(CK_DATALAKE_REGION = NA)
+test_that("lake_con() passes only arguments noctua's dbConnect() takes", {
+  # noctua's dbConnect() also takes `...`, so a misnamed argument would not fail there.
+  connect <- methods::getMethod("dbConnect", "AthenaDriver", where = asNamespace("noctua"))
+  takes <- names(formals(methods::unRematchDefinition(connect)))
+  args <- lake_con_args(CK_DATALAKE_INTERNAL_PROFILE = "profile", CK_DATALAKE_ROLE_ARN = "role")
 
-  expect_error(lake_env("CK_DATALAKE_REGION"), "CK_DATALAKE_REGION is not set.*\\?ckdata_settings")
+  expect_contains(setdiff(takes, "..."), names(args))
 })
 
-test_that("a missing optional setting reads as unset", {
+test_that("each required setting, when missing, stops the connection and names itself", {
+  for (name in c("CK_DATALAKE_S3_STAGING_DIR", "CK_DATALAKE_REGION", "CK_DATALAKE_WORKGROUP")) {
+    expect_error(
+      do.call(lake_con_args, rlang::set_names(list(NA), name)),
+      paste0(name, " is not set.*\\?ckdata_settings")
+    )
+  }
+})
+
+test_that("an empty optional setting reads as unset", {
   withr::local_envvar(CK_DATALAKE_INTERNAL_PROFILE = "")
 
   expect_null(lake_env("CK_DATALAKE_INTERNAL_PROFILE", required = FALSE))
