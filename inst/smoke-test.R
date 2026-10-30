@@ -35,7 +35,7 @@ for (name in settings) {
   cat("  ", if (nzchar(Sys.getenv(name))) "set  " else "unset", " ", name, "\n", sep = "")
 }
 
-schema <- ckdata:::ckdata_schema()
+schema <- ckdata_schema()
 table <- if (identical(schema, "research")) "classes" else "mart_classes"
 
 cat("\n== lake connection: counting ", schema, ".", table, " ==\n", sep = "")

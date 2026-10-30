@@ -14,10 +14,8 @@
 #'   queries and puts it back afterwards.
 #' - `ckdata.cache_dir`: where [collect_cached()] keeps its parquet files. Defaults to
 #'   `".ckdata-cache"`.
-#' - `ckdata.schema`: the database [lake_tbl()] opens a table from when the call names none. When
-#'   the option is unset, the `CK_DATALAKE_SCHEMA` environment variable sets it, and when neither is
-#'   set it is the marts database, `"ck_datalake_prd_marts_app"`. An environment that may read only
-#'   the `research` views sets `CK_DATALAKE_SCHEMA=research` once, and its scripts name no schema.
+#' - `ckdata.schema`: the database [lake_tbl()] opens a table from when the call names none; see
+#'   [ckdata_schema()].
 #'
 #' @section Modes:
 #' Two kinds of column are flagged:
@@ -49,6 +47,27 @@ ckdata_verbose <- function() {
   rlang::is_true(getOption("ckdata.verbose"))
 }
 
+#' The database lake_tbl() reads from by default
+#'
+#' [lake_tbl()] opens a table from this database when the call names none. It is the
+#' `ckdata.schema` option when that is set, then the `CK_DATALAKE_SCHEMA` environment variable, and
+#' otherwise the marts database, `"ck_datalake_prd_marts_app"`. An empty variable counts as unset.
+#' The option and the variable are read on every call, so a change applies to the next [lake_tbl()]
+#' call.
+#'
+#' Set the option in a script or `.Rprofile`. Set the variable where the environment rather than the
+#' script decides: an environment that may read only the `research` views, such as a research
+#' container, sets `CK_DATALAKE_SCHEMA=research`, and its scripts name no database.
+#'
+#' @return The database's name.
+#' @seealso [ckdata_options], [ckdata_settings]
+#' @export
+#' @examples
+#' ckdata_schema()
+#'
+#' old <- options(ckdata.schema = "research")
+#' ckdata_schema()
+#' options(old)
 ckdata_schema <- function() {
   getOption("ckdata.schema") %||%
     lake_env("CK_DATALAKE_SCHEMA", required = FALSE) %||%
